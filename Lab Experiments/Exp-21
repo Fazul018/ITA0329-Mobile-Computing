@@ -1,0 +1,50 @@
+
+import numpy as np
+
+rng = np.random.default_rng(42)
+
+users = 5
+slots = 1000
+
+snr = rng.uniform(1, 20, (users, slots))
+
+throughput = np.log2(1 + snr)
+
+rr = np.zeros(users)
+max_ci = np.zeros(users)
+pf = np.zeros(users)
+
+avg_rate = np.ones(users)
+
+for t in range(slots):
+    rr_user = t % users
+    rr[rr_user] += throughput[rr_user, t]
+
+    max_user = np.argmax(throughput[:, t])
+    max_ci[max_user] += throughput[max_user, t]
+
+    pf_user = np.argmax(throughput[:, t] / avg_rate)
+    pf[pf_user] += throughput[pf_user, t]
+
+    avg_rate = 0.9 * avg_rate + 0.1 * throughput[:, t] * (np.arange(users) == pf_user)
+
+def fairness(x):
+    return (np.sum(x) ** 2) / (users * np.sum(x ** 2))
+
+print("OFDMA Scheduling Comparison")
+print("\nUser Throughput:")
+
+print(f"{'User':<8}{'Round Robin':<15}{'Max C/I':<15}{'Proportional Fair'}")
+
+for i in range(users):
+    print(f"{i+1:<8}{rr[i]:<15.2f}{max_ci[i]:<15.2f}{pf[i]:.2f}")
+
+print("\nTotal Throughput:")
+print("Round Robin:", round(np.sum(rr), 2))
+print("Max C/I:", round(np.sum(max_ci), 2))
+print("Proportional Fair:", round(np.sum(pf), 2))
+
+print("\nJain's Fairness Index:")
+print("Round Robin:", round(fairness(rr), 4))
+print("Max C/I:", round(fairness(max_ci), 4))
+print("Proportional Fair:", round(fairness(pf), 4))
